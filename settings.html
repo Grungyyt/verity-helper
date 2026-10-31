@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: system-ui, sans-serif; padding: 16px; background: #14141e; color: #fff; }
+  label { display: block; margin-top: 12px; font-size: 13px; opacity: 0.8; }
+  input[type=text], input[type=password], select { width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px; border-radius: 6px; border: 1px solid #333; background: #1e1e2c; color: #fff; }
+  input[type=range] { width: 100%; margin-top: 4px; }
+  button { margin-top: 18px; margin-right: 8px; padding: 10px 18px; border: 0; border-radius: 6px; background: #4da3ff; color: #fff; cursor: pointer; }
+  button.alt { background: #2c2c40; }
+  h3 { margin: 22px 0 0; font-size: 14px; color: #ffd60a; }
+</style>
+</head>
+<body>
+<label>Clé Groq (chat + écoute, gratuit : console.groq.com)<input id="groqKey" type="password"></label>
+<label>Clé OpenRouter<input id="openrouterKey" type="password"></label>
+<label>Modèle Groq<input id="groqModel" type="text"></label>
+<label>Modèle OpenRouter<input id="openrouterModel" type="text"></label>
+<label>Modèle Ollama<input id="ollamaModel" type="text"></label>
+
+<h3>Activation</h3>
+<label style="display:flex;gap:8px;align-items:center"><input id="wakeWord" type="checkbox"> Réveil par la voix : dire « Verity » (touche K toujours active)</label>
+
+<h3>PC et mises à jour</h3>
+<label style="display:flex;gap:8px;align-items:center"><input id="allowOpen" type="checkbox"> Verity peut ouvrir des apps, sites et dossiers (sur demande)</label>
+<label style="display:flex;gap:8px;align-items:center"><input id="allowScreen" type="checkbox"> Verity peut regarder mon écran (uniquement quand je le demande)</label>
+<label style="display:flex;gap:8px;align-items:center"><input id="autoUpdate" type="checkbox"> Mises à jour automatiques (GitHub)</label>
+<button id="upd" class="alt">Vérifier les mises à jour</button>
+
+<h3>Voix Fish Audio</h3>
+<label>Moteur<select id="ttsEngine"><option value="fish">Fish Audio</option><option value="edge">Edge (secours, gratuit)</option></select></label>
+<label>Clé API Fish Audio (fish.audio)<input id="fishKey" type="password"></label>
+<label>Voice ID<input id="fishVoiceId" type="text"></label>
+<label>Modèle<input id="fishModel" type="text"></label>
+
+<h3>Voix de secours (Edge)</h3>
+<label>Voix<select id="ttsVoice"></select></label>
+<label>Hauteur : <span id="pv"></span> Hz<input id="ttsPitch" type="range" min="-20" max="40" step="1"></label>
+<label>Vitesse : <span id="rv"></span> %<input id="ttsRate" type="range" min="-20" max="30" step="1"></label>
+
+<button id="test" class="alt">Tester la voix</button>
+<button id="angry" class="alt">Tester en colère</button>
+<button id="calm" class="alt">Calmer Verity</button>
+<button id="save">Enregistrer</button>
+
+<script>
+  const text = ['groqKey', 'openrouterKey', 'groqModel', 'openrouterModel', 'ollamaModel', 'fishKey', 'fishVoiceId', 'fishModel']
+  const $ = (id) => document.getElementById(id)
+  const sync = () => {
+    $('pv').textContent = $('ttsPitch').value
+    $('rv').textContent = $('ttsRate').value
+  }
+
+  const read = () => {
+    const data = {}
+    text.forEach((i) => (data[i] = $(i).value.trim()))
+    data.wakeWord = $('wakeWord').checked
+    data.allowOpen = $('allowOpen').checked
+    data.allowScreen = $('allowScreen').checked
+    data.autoUpdate = $('autoUpdate').checked
+    data.ttsEngine = $('ttsEngine').value
+    data.ttsVoice = $('ttsVoice').value
+    data.ttsPitch = Number($('ttsPitch').value)
+    data.ttsRate = Number($('ttsRate').value)
+    return data
+  }
+
+  Promise.all([api.getConfig(), api.voices()]).then(([c, voices]) => {
+    text.forEach((i) => ($(i).value = c[i] || ''))
+    $('ttsVoice').innerHTML = voices.map((v) => `<option value="${v.name}">${v.label}</option>`).join('')
+    $('wakeWord').checked = c.wakeWord !== false
+    $('allowOpen').checked = c.allowOpen !== false
+    $('allowScreen').checked = c.allowScreen !== false
+    $('autoUpdate').checked = c.autoUpdate !== false
+    $('ttsEngine').value = c.ttsEngine || 'fish'
+    $('ttsVoice').value = c.ttsVoice
+    $('ttsPitch').value = c.ttsPitch
+    $('ttsRate').value = c.ttsRate
+    sync()
+  })
+
+  $('ttsPitch').oninput = sync
+  $('ttsRate').oninput = sync
+
+  const testVoice = async (text, mood) => {
+    await api.setConfig(read())
+    const res = await api.tts(text, mood)
+    if (res.audio) new Audio(URL.createObjectURL(new Blob([res.audio], { type: 'audio/mpeg' }))).play()
+    if (res.warn) alert(res.warn + '\n(voix de secours utilisée)')
+    else if (res.error) alert(res.error)
+  }
+  $('test').onclick = () => testVoice('Hi, it’s me, Verity! Ask me absolutely anything you want.')
+  $('angry').onclick = () => testVoice('Who do you think you are? Figure it out yourself!', { level: 3, value: -80 })
+  $('upd').onclick = () => api.checkUpdate()
+  $('calm').onclick = () => api.setConfig({ mood: 30, moodAt: Date.now() })
+
+  $('save').onclick = async () => {
+    await api.setConfig(read())
+    window.close()
+  }
+</script>
+</body>
+</html>

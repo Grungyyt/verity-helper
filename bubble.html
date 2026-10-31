@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; font-family: system-ui, sans-serif; user-select: none; }
+  body { display: flex; justify-content: center; align-items: flex-start; }
+  #b { box-sizing: border-box; max-width: 264px; max-height: 210px; overflow: hidden; margin-top: 4px; padding: 9px 13px; border-radius: 14px; background: rgba(20, 20, 30, 0.92); color: #fff; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+</style>
+</head>
+<body>
+<div id="b"></div>
+<script>
+  const b = document.getElementById('b')
+  api.onText((t) => {
+    b.textContent = t
+    requestAnimationFrame(() => api.bubbleSize(Math.ceil(b.offsetHeight) + 8))
+  })
+</script>
+</body>
+</html>
